@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Image Manager Setup",
+        "description": "Configure your Image Manager integration",
+        "data": {
+          "name": "Integration Name",
+          "max_images": "Maximum Number of Images"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_max_images": "Maximum images must be between 1 and 100",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "Image Manager is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Image Manager Options",
+        "description": "Configure Image Manager options",
+        "data": {
+          "max_images": "Maximum Number of Images"
+        }
+      }
+    }
+  },
+  "services": {
+    "upload_image": {
+      "name": "Upload Image",
+      "description": "Upload a new image to the Image Manager",
+      "fields": {
+        "image_data": {
+          "name": "Image Data",
+          "description": "Base64 encoded image data (must be 3840x2160 pixels)"
+        },
+        "filename": {
+          "name": "Filename",
+          "description": "Optional custom filename for the image"
+        }
+      }
+    },
+    "delete_image": {
+      "name": "Delete Image",
+      "description": "Delete a specific image by sequence number",
+      "fields": {
+        "sequence": {
+          "name": "Sequence Number",
+          "description": "The sequence number of the image to delete"
+        }
+      }
+    },
+    "delete_all_images": {
+      "name": "Delete All Images",
+      "description": "Delete all stored images from the Image Manager"
+    }
+  },
+  "entity": {
+    "image": {
+      "image_manager": {
+        "name": "Image Manager {sequence}"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_dimensions": {
+      "message": "Image must be exactly 3840x2160 pixels"
+    },
+    "unsupported_format": {
+      "message": "Image format not supported. Use JPEG or PNG"
+    },
+    "file_too_large": {
+      "message": "Image file is too large (maximum 50MB)"
+    },
+    "storage_full": {
+      "message": "Image storage is full"
+    },
+    "image_not_found": {
+      "message": "Image not found"
+    }
+  }
+}

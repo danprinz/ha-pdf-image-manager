@@ -1,0 +1,2 @@
+# This file ensures the images directory is preserved in version control
+# Images will be stored in this directory during runtime

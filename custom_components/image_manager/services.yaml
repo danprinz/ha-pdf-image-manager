@@ -1,0 +1,35 @@
+upload_image:
+  name: Upload Image
+  description: Upload a new image to the Image Manager
+  fields:
+    image_data:
+      name: Image Data
+      description: Base64 encoded image data
+      required: true
+      selector:
+        text:
+          multiline: true
+    filename:
+      name: Filename
+      description: Optional custom filename for the image
+      required: false
+      selector:
+        text:
+
+delete_image:
+  name: Delete Image
+  description: Delete a specific image by sequence number
+  fields:
+    sequence:
+      name: Sequence Number
+      description: The sequence number of the image to delete
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 999
+          mode: box
+
+delete_all_images:
+  name: Delete All Images
+  description: Delete all stored images

@@ -1,0 +1,13 @@
+{
+  "domain": "image_manager",
+  "name": "Image Manager",
+  "codeowners": ["@homeassistant"],
+  "config_flow": true,
+  "documentation": "https://github.com/your_github_username/image_manager",
+  "issue_tracker": "https://github.com/your_github_username/image_manager/issues",
+  "options": true,
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": ["Pillow==11.3.0", "pypdfium2==4.30.0"],
+  "version": "1.0.0"
+}
