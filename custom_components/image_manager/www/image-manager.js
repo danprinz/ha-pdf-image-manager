@@ -997,21 +997,6 @@ class ImageManagerCardEditor extends HTMLElement {
           </div>
         </div>
 
-        <div class="section-title">Selection Mode</div>
-
-        <div class="config-row">
-          <label class="config-label">Target Input Text</label>
-          <div class="config-input">
-            <input
-              type="text"
-              id="target_input_text"
-              value="${this._config.target_input_text || ''}"
-              placeholder="input_text.my_input"
-            >
-            <div class="help-text">Optional: Entity ID of input_text helper to set selected image URL to</div>
-          </div>
-        </div>
-
         <div class="preview-section">
           <div class="preview-title">Configuration Preview</div>
           <div class="preview-config" id="config-preview"></div>
@@ -1026,7 +1011,7 @@ class ImageManagerCardEditor extends HTMLElement {
 
   _attachEventListeners() {
     // Text inputs
-    const textInputs = ['title', 'target_input_text'];
+    const textInputs = ['title'];
     textInputs.forEach(id => {
       const input = this.shadowRoot.getElementById(id);
       if (input) {
@@ -1098,11 +1083,6 @@ show_entities: ${cleanConfig.show_entities}
 columns: ${cleanConfig.columns}
 thumbnail_size: ${cleanConfig.thumbnail_size}`;
 
-      if (cleanConfig.target_input_text) {
-        previewText += `
-target_input_text: "${cleanConfig.target_input_text}"`;
-      }
-
       preview.textContent = previewText;
     }
   }
@@ -1153,7 +1133,7 @@ class ImageManagerSelectorCard extends HTMLElement {
 
   setConfig(config) {
     if (!config.target_input_text) {
-      throw new Error('target_input_text is a required configuration option.');
+      // Allow saving without target_input_text initially, show error in card
     }
 
     this._config = {
@@ -1261,9 +1241,15 @@ class ImageManagerSelectorCard extends HTMLElement {
         .hidden {
           display: none;
         }
+        .error-config {
+          color: var(--error-color);
+          padding: 16px;
+        }
       </style>
       <ha-card header="${this._config.title}">
         <div class="card-content">
+          ${!this._config.target_input_text ? '<div class="error-config">Please configure a target_input_text entity.</div>' : ''}
+          
           <div class="dropdown-container">
             <ha-select label="Select Image" naturalMenuWidth>
               ${this._images.map(image => `
@@ -1274,7 +1260,7 @@ class ImageManagerSelectorCard extends HTMLElement {
               `).join('')}
             </ha-select>
           </div>
-          ${this._config.show_preview ? `
+          ${this._config.show_preview !== false ? `
             <div class="preview ${!this._selectedImage ? 'hidden' : ''}">
               <img src="${selectedImageUrl}" />
             </div>
@@ -1335,10 +1321,11 @@ class ImageManagerSelectorCard extends HTMLElement {
         value: this._selectedImage.url,
       });
 
-      if (this._config.target_pdf_input_text && this._selectedImage.pdf_url) {
+      if (this._config.target_pdf_input_text) {
+        const pdf_url = this._selectedImage.pdf_url || '';
         await this._hass.callService('input_text', 'set_value', {
           entity_id: this._config.target_pdf_input_text,
-          value: this._selectedImage.pdf_url,
+          value: pdf_url,
         });
       }
 
@@ -1382,11 +1369,6 @@ class ImageManagerSelectorEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-  }
-
-  set hass(hass) {
-    this._hass = hass;
   }
 
   setConfig(config) {
@@ -1394,54 +1376,104 @@ class ImageManagerSelectorEditor extends HTMLElement {
     this._render();
   }
 
-  _render() {
-    if (!this.shadowRoot) return;
-
-    this.shadowRoot.innerHTML = `
-      <div class="card-config">
-        <paper-input
-          label="Title"
-          .value="${this._config.title || ''}"
-          .configValue="${'title'}"
-          @value-changed="${this._handleConfigChanged}"
-        ></paper-input>
-        <paper-input
-          label="Target Input Text"
-          .value="${this._config.target_input_text || ''}"
-          .configValue="${'target_input_text'}"
-          @value-changed="${this._handleConfigChanged}"
-          required
-        ></paper-input>
-        <paper-input
-          label="Target PDF Input Text"
-          .value="${this._config.target_pdf_input_text || ''}"
-          .configValue="${'target_pdf_input_text'}"
-          @value-changed="${this._handleConfigChanged}"
-        ></paper-input>
-        <ha-formfield label="Show Preview">
-          <ha-switch
-            .checked="${this._config.show_preview !== false}"
-            .configValue="${'show_preview'}"
-            @change="${this._handleConfigChanged}"
-          ></ha-switch>
-        </ha-formfield>
-      </div>
-    `;
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
   }
 
-  _handleConfigChanged(e) {
-    if (!this._config || !this._hass) {
-      return;
+  _render() {
+    if (!this._config || !this._hass) return;
+
+    if (!this.shadowRoot.querySelector('.card-config')) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+          }
+          .card-config {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+          .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .help-text {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+          }
+        </style>
+        <div class="card-config">
+          <div class="config-item">
+            <ha-selector
+              label="Title"
+              class="val-title"
+            ></ha-selector>
+          </div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Store Image URL to"
+              class="val-target_input_text"
+            ></ha-selector>
+            <div class="help-text">Select an input_text entity to store the selected image URL</div>
+          </div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Store PDF URL to"
+              class="val-target_pdf_input_text"
+            ></ha-selector>
+            <div class="help-text">Optional: Select an input_text entity to store the PDF URL</div>
+          </div>
+
+          <div class="config-item">
+             <ha-selector
+              label="Show Preview"
+              class="val-show_preview"
+            ></ha-selector>
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners once
+      this.shadowRoot.querySelectorAll('ha-selector').forEach(selector => {
+        selector.addEventListener('value-changed', this._handleValueChanged.bind(this));
+      });
     }
 
-    const target = e.target;
-    // For ha-switch @change event, use .checked. For paper-input @value-changed, use .value or e.detail.value if available but .value usually works.
-    // However, for HA elements, detail.value works best.
-    const value = target.checked !== undefined ? target.checked : (e.detail && e.detail.value !== undefined ? e.detail.value : target.value);
-    const configValue = target.configValue;
+    // Update selectors properties
+    this._updateSelector('.val-title', 'title', { text: {} }, this._config.title);
+    this._updateSelector('.val-target_input_text', 'target_input_text', { entity: { domain: 'input_text' } }, this._config.target_input_text);
+    this._updateSelector('.val-target_pdf_input_text', 'target_pdf_input_text', { entity: { domain: 'input_text' } }, this._config.target_pdf_input_text);
+    this._updateSelector('.val-show_preview', 'show_preview', { boolean: {} }, this._config.show_preview !== false);
+  }
 
-    if (this._config[configValue] !== value) {
-      this._config = { ...this._config, [configValue]: value };
+  _updateSelector(selectorClass, configValue, selectorConfig, value) {
+    const element = this.shadowRoot.querySelector(selectorClass);
+    if (element) {
+      element.hass = this._hass;
+      element.selector = selectorConfig;
+      element.value = value;
+      element.label = element.getAttribute('label'); // Ensure label is preserved/set
+      // Store configValue on the element for event handling
+      element.configValue = configValue;
+    }
+  }
+
+  _handleValueChanged(e) {
+    if (!this._config || !this._hass) return;
+    const target = e.target;
+    const configValue = target.configValue;
+    const value = e.detail.value;
+
+    if (configValue && this._config[configValue] !== value) {
+      this._config = {
+        ...this._config,
+        [configValue]: value,
+      };
       const event = new CustomEvent('config-changed', {
         bubbles: true,
         composed: true,
