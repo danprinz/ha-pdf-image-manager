@@ -1,10 +1,10 @@
 {
   "domain": "image_manager",
   "name": "Image Manager",
-  "codeowners": ["@homeassistant"],
+  "codeowners": ["@danprinz"],
   "config_flow": true,
-  "documentation": "https://github.com/your_github_username/image_manager",
-  "issue_tracker": "https://github.com/your_github_username/image_manager/issues",
+  "documentation": "https://github.com/danprinz/ha-pdf-image-manager",
+  "issue_tracker": "https://github.com/danprinz/ha-pdf-image-manager/issues",
   "options": true,
   "integration_type": "service",
   "iot_class": "local_push",

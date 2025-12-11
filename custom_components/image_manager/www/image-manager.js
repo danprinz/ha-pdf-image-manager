@@ -685,10 +685,24 @@ class ImageManagerCard extends HTMLElement {
     }
 
     try {
+      // Set the image URL
       await this._hass.callService('input_text', 'set_value', {
         entity_id: entityId,
         value: url,
       });
+
+      // Also set the PDF URL if target_pdf_input_text is configured
+      if (this._config.target_pdf_input_text) {
+        // Find the image object to get the pdf_url
+        const image = this._images.find(img => img.url === url);
+        const pdf_url = image?.pdf_url || '';
+        
+        await this._hass.callService('input_text', 'set_value', {
+          entity_id: this._config.target_pdf_input_text,
+          value: pdf_url,
+        });
+      }
+
       this._showSuccess(`Image URL set for ${entityId}`);
     } catch (error) {
       console.error('Failed to set input_text value:', error);
@@ -767,336 +781,183 @@ class ImageManagerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._render();
   }
 
   _render() {
-    if (!this.shadowRoot) return;
+    if (!this._config || !this._hass) return;
 
-    const style = `
-      <style>
-        :host {
-          display: block;
-        }
-        
-        .card-config {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        
-        .config-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          min-height: 40px;
-        }
-        
-        .config-label {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          min-width: 120px;
-        }
-        
-        .config-input {
-          flex: 1;
-          margin-left: 16px;
-        }
-        
-        .config-input input,
-        .config-input select {
-          width: 100%;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-size: 14px;
-        }
-        
-        .config-input input:focus,
-        .config-input select:focus {
-          outline: none;
-          border-color: var(--primary-color);
-        }
-        
-        .config-input input[type="number"] {
-          max-width: 100px;
-        }
-        
-        .toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 24px;
-        }
-        
-        .toggle-switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: var(--divider-color);
-          transition: 0.3s;
-          border-radius: 24px;
-        }
-        
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 18px;
-          width: 18px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: 0.3s;
-          border-radius: 50%;
-        }
-        
-        input:checked + .slider {
-          background-color: var(--primary-color);
-        }
-        
-        input:checked + .slider:before {
-          transform: translateX(26px);
-        }
-        
-        .section-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--primary-text-color);
-          margin: 24px 0 12px 0;
-          padding-bottom: 8px;
-          border-bottom: 1px solid var(--divider-color);
-        }
-        
-        .section-title:first-child {
-          margin-top: 0;
-        }
-        
-        .help-text {
-          font-size: 12px;
-          color: var(--secondary-text-color);
-          margin-top: 4px;
-          line-height: 1.4;
-        }
-        
-        .preview-section {
-          margin-top: 24px;
-          padding: 16px;
-          background: var(--secondary-background-color);
-          border-radius: 8px;
-        }
-        
-        .preview-title {
-          font-weight: 500;
-          margin-bottom: 12px;
-          color: var(--primary-text-color);
-        }
-        
-        .preview-config {
-          font-family: monospace;
-          font-size: 12px;
-          background: var(--card-background-color);
-          padding: 12px;
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
-          white-space: pre-wrap;
-          color: var(--primary-text-color);
-          max-height: 200px;
-          overflow-y: auto;
-        }
-      </style>
-    `;
-
-    const content = `
-      <div class="card-config">
-        <div class="section-title">Basic Settings</div>
-        
-        <div class="config-row">
-          <label class="config-label">Title</label>
-          <div class="config-input">
-            <input 
-              type="text" 
-              id="title" 
-              value="${this._config.title || 'Image Manager'}"
-              placeholder="Image Manager"
-            >
+    if (!this.shadowRoot.querySelector('.card-config')) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+          }
+          .card-config {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+          .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .help-text {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-text-color);
+            margin: 24px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--divider-color);
+          }
+          .section-title:first-child {
+            margin-top: 0;
+          }
+        </style>
+        <div class="card-config">
+          <div class="section-title">Basic Settings</div>
+          
+          <div class="config-item">
+            <ha-selector
+              label="Title"
+              class="val-title"
+            ></ha-selector>
             <div class="help-text">The title displayed at the top of the card</div>
           </div>
-        </div>
 
-        <div class="section-title">Display Options</div>
-        
-        <div class="config-row">
-          <label class="config-label">Show Upload Area</label>
-          <div class="config-input">
-            <label class="toggle-switch">
-              <input type="checkbox" id="show_upload" ${this._config.show_upload !== false ? 'checked' : ''}>
-              <span class="slider"></span>
-            </label>
+          <div class="section-title">Target Entities</div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Store Image URL to"
+              class="val-target_input_text"
+            ></ha-selector>
+            <div class="help-text">Optional: Select an input_text entity to store the selected image URL when clicking "Select"</div>
+          </div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Store PDF URL to"
+              class="val-target_pdf_input_text"
+            ></ha-selector>
+            <div class="help-text">Optional: Select an input_text entity to store the PDF URL when clicking "Select"</div>
+          </div>
+
+          <div class="section-title">Display Options</div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Show Upload Area"
+              class="val-show_upload"
+            ></ha-selector>
             <div class="help-text">Show the drag-and-drop upload area</div>
           </div>
-        </div>
-        
-        <div class="config-row">
-          <label class="config-label">Show Gallery</label>
-          <div class="config-input">
-            <label class="toggle-switch">
-              <input type="checkbox" id="show_gallery" ${this._config.show_gallery !== false ? 'checked' : ''}>
-              <span class="slider"></span>
-            </label>
+
+          <div class="config-item">
+            <ha-selector
+              label="Show Gallery"
+              class="val-show_gallery"
+            ></ha-selector>
             <div class="help-text">Show the image gallery with thumbnails</div>
           </div>
-        </div>
-        
-        <div class="config-row">
-          <label class="config-label">Show Entity IDs</label>
-          <div class="config-input">
-            <label class="toggle-switch">
-              <input type="checkbox" id="show_entities" ${this._config.show_entities !== false ? 'checked' : ''}>
-              <span class="slider"></span>
-            </label>
+
+          <div class="config-item">
+            <ha-selector
+              label="Show Entity IDs"
+              class="val-show_entities"
+            ></ha-selector>
             <div class="help-text">Show the list of entity IDs for easy copying</div>
           </div>
-        </div>
 
-        <div class="section-title">Gallery Settings</div>
-        
-        <div class="config-row">
-          <label class="config-label">Columns</label>
-          <div class="config-input">
-            <input 
-              type="number" 
-              id="columns" 
-              value="${this._config.columns || 3}"
-              min="1" 
-              max="6"
-            >
+          <div class="section-title">Gallery Settings</div>
+
+          <div class="config-item">
+            <ha-selector
+              label="Columns"
+              class="val-columns"
+            ></ha-selector>
             <div class="help-text">Number of columns in the image gallery (1-6)</div>
           </div>
-        </div>
-        
-        <div class="config-row">
-          <label class="config-label">Thumbnail Size</label>
-          <div class="config-input">
-            <select id="thumbnail_size">
-              <option value="100" ${this._config.thumbnail_size === 100 ? 'selected' : ''}>Small (100px)</option>
-              <option value="150" ${(this._config.thumbnail_size || 150) === 150 ? 'selected' : ''}>Medium (150px)</option>
-              <option value="200" ${this._config.thumbnail_size === 200 ? 'selected' : ''}>Large (200px)</option>
-              <option value="250" ${this._config.thumbnail_size === 250 ? 'selected' : ''}>Extra Large (250px)</option>
-            </select>
+
+          <div class="config-item">
+            <ha-selector
+              label="Thumbnail Size"
+              class="val-thumbnail_size"
+            ></ha-selector>
             <div class="help-text">Height of thumbnail images in the gallery</div>
           </div>
         </div>
+      `;
 
-        <div class="preview-section">
-          <div class="preview-title">Configuration Preview</div>
-          <div class="preview-config" id="config-preview"></div>
-        </div>
-      </div>
-    `;
+      // Attach event listeners once
+      this.shadowRoot.querySelectorAll('ha-selector').forEach(selector => {
+        selector.addEventListener('value-changed', this._handleValueChanged.bind(this));
+      });
+    }
 
-    this.shadowRoot.innerHTML = style + content;
-    this._attachEventListeners();
-    this._updatePreview();
+    // Update selectors properties
+    this._updateSelector('.val-title', 'title', { text: {} }, this._config.title || 'Image Manager');
+    this._updateSelector('.val-target_input_text', 'target_input_text', { entity: { domain: 'input_text' } }, this._config.target_input_text);
+    this._updateSelector('.val-target_pdf_input_text', 'target_pdf_input_text', { entity: { domain: 'input_text' } }, this._config.target_pdf_input_text);
+    this._updateSelector('.val-show_upload', 'show_upload', { boolean: {} }, this._config.show_upload !== false);
+    this._updateSelector('.val-show_gallery', 'show_gallery', { boolean: {} }, this._config.show_gallery !== false);
+    this._updateSelector('.val-show_entities', 'show_entities', { boolean: {} }, this._config.show_entities !== false);
+    this._updateSelector('.val-columns', 'columns', { number: { min: 1, max: 6, mode: 'box' } }, this._config.columns || 3);
+    this._updateSelector('.val-thumbnail_size', 'thumbnail_size', { 
+      select: { 
+        options: [
+          { value: '100', label: 'Small (100px)' },
+          { value: '150', label: 'Medium (150px)' },
+          { value: '200', label: 'Large (200px)' },
+          { value: '250', label: 'Extra Large (250px)' }
+        ]
+      } 
+    }, String(this._config.thumbnail_size || 150));
   }
 
-  _attachEventListeners() {
-    // Text inputs
-    const textInputs = ['title'];
-    textInputs.forEach(id => {
-      const input = this.shadowRoot.getElementById(id);
-      if (input) {
-        input.addEventListener('input', (e) => {
-          this._updateConfig(id, e.target.value);
-        });
-      }
-    });
-
-    // Number inputs
-    const numberInputs = ['columns'];
-    numberInputs.forEach(id => {
-      const input = this.shadowRoot.getElementById(id);
-      if (input) {
-        input.addEventListener('input', (e) => {
-          this._updateConfig(id, parseInt(e.target.value) || 3);
-        });
-      }
-    });
-
-    // Select inputs
-    const selectInputs = ['thumbnail_size'];
-    selectInputs.forEach(id => {
-      const input = this.shadowRoot.getElementById(id);
-      if (input) {
-        input.addEventListener('change', (e) => {
-          this._updateConfig(id, parseInt(e.target.value));
-        });
-      }
-    });
-
-    // Checkbox inputs
-    const checkboxInputs = ['show_upload', 'show_gallery', 'show_entities'];
-    checkboxInputs.forEach(id => {
-      const input = this.shadowRoot.getElementById(id);
-      if (input) {
-        input.addEventListener('change', (e) => {
-          this._updateConfig(id, e.target.checked);
-        });
-      }
-    });
-  }
-
-  _updateConfig(key, value) {
-    this._config = { ...this._config, [key]: value };
-    this._updatePreview();
-    this._fireConfigChanged();
-  }
-
-  _updatePreview() {
-    const preview = this.shadowRoot.getElementById('config-preview');
-    if (preview) {
-      // Create a clean config object for preview
-      const cleanConfig = { ...this._config };
-      
-      // Remove undefined values and set defaults
-      if (!cleanConfig.title) cleanConfig.title = 'Image Manager';
-      if (cleanConfig.show_upload === undefined) cleanConfig.show_upload = true;
-      if (cleanConfig.show_gallery === undefined) cleanConfig.show_gallery = true;
-      if (cleanConfig.show_entities === undefined) cleanConfig.show_entities = true;
-      if (!cleanConfig.columns) cleanConfig.columns = 3;
-      if (!cleanConfig.thumbnail_size) cleanConfig.thumbnail_size = 150;
-
-      let previewText = `type: custom:image-manager-card
-title: "${cleanConfig.title}"
-show_upload: ${cleanConfig.show_upload}
-show_gallery: ${cleanConfig.show_gallery}
-show_entities: ${cleanConfig.show_entities}
-columns: ${cleanConfig.columns}
-thumbnail_size: ${cleanConfig.thumbnail_size}`;
-
-      preview.textContent = previewText;
+  _updateSelector(selectorClass, configValue, selectorConfig, value) {
+    const element = this.shadowRoot.querySelector(selectorClass);
+    if (element) {
+      element.hass = this._hass;
+      element.selector = selectorConfig;
+      element.value = value;
+      element.label = element.getAttribute('label'); // Ensure label is preserved/set
+      // Store configValue on the element for event handling
+      element.configValue = configValue;
     }
   }
 
-  _fireConfigChanged() {
-    const event = new CustomEvent('config-changed', {
-      detail: { config: this._config },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(event);
+  _handleValueChanged(e) {
+    if (!this._config || !this._hass) return;
+    const target = e.target;
+    const configValue = target.configValue;
+    let value = e.detail.value;
+
+    // Convert thumbnail_size back to number
+    if (configValue === 'thumbnail_size') {
+      value = parseInt(value);
+    }
+
+    if (configValue && this._config[configValue] !== value) {
+      this._config = {
+        ...this._config,
+        [configValue]: value,
+      };
+      const event = new CustomEvent('config-changed', {
+        bubbles: true,
+        composed: true,
+        detail: { config: this._config },
+      });
+      this.dispatchEvent(event);
+    }
   }
 
-  static get styles() {
+  configChanged() {
     return [];
   }
 }
