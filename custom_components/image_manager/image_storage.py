@@ -50,9 +50,7 @@ class ImageStorageManager:
         self.config_entry_id = config_entry_id
         self.max_images = max_images
         _LOGGER.info("ImageStorageManager initialized with max_images: %d", max_images)
-        self._storage_path = Path(
-            hass.config.path("custom_components", "image_manager", IMAGES_DIR)
-        )
+        self._storage_path = Path(hass.config.path("image_manager", IMAGES_DIR))
         self._metadata_path = self._storage_path / METADATA_FILE
         self._lock = asyncio.Lock()
 
@@ -229,8 +227,10 @@ class ImageStorageManager:
     ) -> Dict[str, Any]:
         """Store image with automatic rotation if needed. Converts PDF files to PNG."""
         async with self._lock:
-            # Check if the uploaded file is a PDF
+            pdf_data: bytes | None = None
             pdf_filename = None
+
+            # Check if the uploaded file is a PDF
             if self._is_pdf_file(image_data):
                 try:
                     _LOGGER.info("PDF file detected, converting to PNG")
@@ -263,7 +263,7 @@ class ImageStorageManager:
                 next_sequence, timestamp, processed_data, filename
             )
 
-            if pdf_filename is None and "pdf_data" in locals():
+            if pdf_data:
                 pdf_filename = self._generate_pdf_filename(
                     next_sequence, timestamp, pdf_data, filename
                 )
@@ -308,7 +308,7 @@ class ImageStorageManager:
                 raise
 
             # Save PDF if exists
-            if pdf_filename:
+            if pdf_filename and pdf_data:
                 pdf_path = self._storage_path / pdf_filename
                 try:
                     async with aiofiles.open(pdf_path, "wb") as f:
