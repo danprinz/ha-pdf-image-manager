@@ -1,13 +1,18 @@
 {
   "domain": "image_manager",
   "name": "Image Manager",
-  "codeowners": ["@danprinz"],
+  "codeowners": [
+    "@danprinz"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/danprinz/ha-pdf-image-manager",
   "issue_tracker": "https://github.com/danprinz/ha-pdf-image-manager/issues",
   "options": true,
   "integration_type": "service",
   "iot_class": "local_push",
-  "requirements": ["Pillow==12.0.0", "pypdfium2==4.30.0"],
+  "requirements": [
+    "Pillow==12.1.1",
+    "pypdfium2==4.30.0"
+  ],
   "version": "1.0.0"
 }
